@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JANAGEN · AI Visual Studio</title>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<style>
+/* ── RESET ─────────────────────────────────────────── */
+*{margin:0;padding:0;box-sizing:border-box}
+
+/* ── TOKENS ─────────────────────────────────────────── */
+:root{
+  --plum:#251632; --plum-l:#3d2460; --plum-xl:#6b4d8a;
+  --y:#FECF00; --y-d:#d4ab00; --y-bg:#fffae0; --y-border:rgba(254,207,0,0.45);
+  --bg:#f2eef9;
+  --surface:#ffffff; --surface-2:#faf7fd; --surface-3:#f5f1fa;
+  --border:#dfd5ee; --border-2:#cfc3e4;
+  --text:#1a0f28; --text-2:#46305e; --text-3:#9180ae;
+  --green:#15803d; --red:#dc2626;
+  --s0:0 1px 2px rgba(37,22,50,0.05);
+  --s1:0 2px 6px rgba(37,22,50,0.08),0 1px 2px rgba(37,22,50,0.04);
+  --s2:0 4px 16px rgba(37,22,50,0.10),0 2px 6px rgba(37,22,50,0.05);
+  --s3:0 8px 28px rgba(37,22,50,0.12),0 3px 10px rgba(37,22,50,0.06);
+  --s4:0 20px 60px rgba(37,22,50,0.14),0 8px 22px rgba(37,22,50,0.08);
+  --inset:inset 0 2px 5px rgba(37,22,50,0.07),inset 0 1px 2px rgba(37,22,50,0.04);
+  --r-sm:8px; --r-md:14px; --r-lg:20px; --r-xl:28px;
+}
+
+html{scroll-behavior:smooth}
+
+body{
+  background:var(--bg);
+  font-family:-apple-system,'Segoe UI',system-ui,sans-serif;
+  color:var(--text); min-height:100vh; overflow-x:hidden;
+}
+
+/* Subtle warm background texture */
+body::before{
+  content:''; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(ellipse 80% 55% at 10% 5%,rgba(254,207,0,0.05) 0%,transparent 60%),
+    radial-gradient(ellipse 60% 40% at 90% 90%,rgba(37,22,50,0.04) 0%,transparent 60%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Ccircle cx='30' cy='30' r='1' fill='rgba(37,22,50,0.03)'/%3E%3C/svg%3E");
+}
+
+/* ── HEADER ──────────────────────────────────────────── */
+.hdr{
+  position:sticky; top:0; z-index:100;
+  background:rgba(255,255,255,0.92); backdrop-filter:blur(24px);
+  border-bottom:1px solid var(--border);
+  box-shadow:0 2px 14px rgba(37,22,50,0.07);
+  padding:0 40px; height:70px;
+  display:flex; align-items:center; justify-content:space-between;
+}
+.logo{display:flex;align-items:center;gap:14px}
+.mark{
+  width:46px; height:46px;
+  background:linear-gradient(145deg,#ffe055 0%,#FECF00 45%,#c9a400 100%);
+  border-radius:13px;
+  display:flex; align-items:center; justify-content:center;
+  font-weight:900; color:var(--plum); font-size:22px; letter-spacing:-1px;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.55) inset,
+    0 -1px 0 rgba(0,0,0,0.14) inset,
+    0 5px 16px rgba(254,207,0,0.38),
+    0 2px 5px rgba(0,0,0,0.10);
+}
+.bname{font-size:19px;font-weight:900;color:var(--plum);letter-spacing:4px;line-height:1}
+.bsub{font-size:9.5px;color:var(--text-3);letter-spacing:2.5px;text-transform:uppercase;margin-top:3px}
+.hdr-badge{
+  display:flex; align-items:center; gap:8px;
+  font-size:11.5px; color:var(--text-2);
+  background:var(--surface-2); border:1px solid var(--border);
+  border-radius:20px; padding:8px 18px;
+  box-shadow:var(--s0);
+}
+.dot{
+  width:8px; height:8px; border-radius:50%;
+  background:var(--green); box-shadow:0 0 6px rgba(21,128,61,0.5);
+  animation:pulse 2.4s ease infinite;
+}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.25}}
+
+/* ── LAYOUT ─────────────────────────────────────────── */
+.main{position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:40px 24px 100px}
+
+/* Section heading pill */
+.section-label{
+  display:inline-flex; align-items:center; gap:8px;
+  font-size:10px; font-weight:700; letter-spacing:2px; text-transform:uppercase;
+  color:var(--text-2); margin-bottom:14px;
+}
+.section-label::before{
+  content:''; width:3px; height:14px;
+  background:linear-gradient(to bottom,var(--y),var(--y-d));
+  border-radius:2px; flex-shrink:0;
+}
+
+/* ── DROP ZONE ──────────────────────────────────────── */
+.drop{
+  position:relative; overflow:hidden; cursor:pointer;
+  background:linear-gradient(160deg,#ffffff 0%,#faf7fd 100%);
+  border:2px dashed var(--border-2);
+  border-radius:var(--r-xl); padding:60px 24px; text-align:center;
+  transition:all 0.3s ease; margin-bottom:32px;
+  box-shadow:var(--s2), inset 0 1px 0 rgba(255,255,255,1);
+}
+.drop:hover,.drop.over{
+  border-color:var(--y-d);
+  background:linear-gradient(160deg,#fffef5 0%,#fffbe0 100%);
+  box-shadow:var(--s3),0 0 0 4px rgba(254,207,0,0.12);
+  transform:translateY(-3px);
+}
+.drop input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+
+.drop-icon-wrap{
+  width:80px; height:80px; border-radius:50%;
+  background:linear-gradient(145deg,#fff8d0 0%,#ffeea0 100%);
+  border:2px solid rgba(254,207,0,0.35);
+  display:flex; align-items:center; justify-content:center;
+  margin:0 auto 20px; font-size:30px;
+  box-shadow:
+    0 4px 16px rgba(254,207,0,0.22),
+    inset 0 1px 0 rgba(255,255,255,0.9),
+    inset 0 -1px 0 rgba(0,0,0,0.05);
+  transition:transform 0.3s;
+}
+.drop:hover .drop-icon-wrap{transform:scale(1.08) translateY(-2px)}
+.drop-title{font-size:20px;font-weight:800;color:var(--plum);margin-bottom:9px;letter-spacing:-0.3px}
+.drop-sub{font-size:13px;color:var(--text-2);line-height:1.7;max-width:480px;margin:0 auto}
+.drop-sub strong{color:var(--plum-l);font-weight:700}
+.tags{display:flex;justify-content:center;gap:8px;margin-top:18px;flex-wrap:wrap}
+.tag{
+  font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;
+  padding:5px 13px;border-radius:20px;
+  background:var(--y-bg);border:1px solid rgba(254,207,0,0.4);color:#7a5e00;
+}
+
+/* ── READING OVERLAY ────────────────────────────────── */
+.reading-overlay{
+  position:fixed;inset:0;z-index:200;
+  background:rgba(242,238,249,0.95);backdrop-filter:blur(28px);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;
+  opacity:0;pointer-events:none;transition:opacity .4s;
+}
+.reading-overlay.on{opacity:1;pointer-events:all}
+.reading-ring{
+  width:68px;height:68px;border-radius:50%;
+  border:4px solid var(--border); border-top-color:var(--y);
+  animation:spin 0.9s linear infinite;
+  box-shadow:0 4px 16px rgba(254,207,0,0.2);
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.reading-title{font-size:17px;font-weight:800;color:var(--plum);letter-spacing:2px}
+.reading-msg{font-size:13px;color:var(--text-2);text-align:center;max-width:300px;line-height:1.65}
+.reading-prog{
+  width:280px;height:6px;border-radius:4px;overflow:hidden;
+  background:var(--border);
+  box-shadow:var(--inset);
+}
+.reading-fill{
+  height:100%;border-radius:4px;width:0%;transition:width .5s;
+  background:linear-gradient(90deg,var(--y-d),var(--y),#ffe870);
+}
+
+/* ── CARDS ──────────────────────────────────────────── */
+.card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-lg); overflow:hidden; margin-bottom:20px;
+  box-shadow:var(--s2);
+  /* Top highlight for lifted paper look */
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.9) inset,
+    var(--s2);
+}
+.ch{
+  padding:14px 22px;
+  background:linear-gradient(180deg,var(--surface-2) 0%,var(--surface) 100%);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.cht{
+  font-size:10px;font-weight:800;letter-spacing:2.5px;text-transform:uppercase;
+  color:var(--plum);display:flex;align-items:center;gap:8px;
+}
+.cht::before{content:'';width:3px;height:12px;background:var(--y);border-radius:2px}
+.cb{padding:18px 22px}
+
+/* ── TWO COL ────────────────────────────────────────── */
+.two{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px}
+@media(max-width:640px){.two{grid-template-columns:1fr}}
+.prev-img{
+  width:100%;border-radius:12px;display:block;
+  max-height:270px;object-fit:contain;
+  background:var(--surface-3);
+  box-shadow:var(--s1);
+}
+
+/* ── FORM ───────────────────────────────────────────── */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+@media(max-width:500px){.form-grid{grid-template-columns:1fr}}
+.fgroup{display:flex;flex-direction:column;gap:6px}
+.flbl{
+  font-size:9.5px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;
+  color:var(--text-2);padding-left:2px;
+}
+.finp,.fsel{
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:var(--r-sm);
+  padding:10px 14px;color:var(--text);font-size:13px;outline:none;
+  font-family:inherit;-webkit-appearance:none;
+  box-shadow:var(--inset),0 1px 0 rgba(255,255,255,0.85);
+  transition:border-color 0.2s,box-shadow 0.2s;
+}
+.fsel{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23251632' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;cursor:pointer;
+}
+.finp:focus,.fsel:focus{
+  border-color:var(--y-d);
+  box-shadow:var(--inset),0 0 0 3px rgba(254,207,0,0.20),0 1px 0 rgba(255,255,255,0.85);
+}
+.finp::placeholder{color:var(--text-3)}
+.fsel option{background:#fff;color:var(--text)}
+
+/* ── OCR BADGE ──────────────────────────────────────── */
+.ocr-badge{
+  display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:700;
+  letter-spacing:0.8px;padding:5px 12px;border-radius:20px;
+}
+.ocr-badge.ok{background:rgba(21,128,61,0.08);border:1px solid rgba(21,128,61,0.25);color:#15803d}
+.ocr-badge.warn{background:var(--y-bg);border:1px solid var(--y-border);color:#7a5e00}
+
+/* ── BRANCH TABLE ───────────────────────────────────── */
+.btable-head{
+  display:grid;grid-template-columns:1fr 70px 70px 30px;gap:6px;
+  padding:0 4px 10px;
+  font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;
+  color:var(--text-3);border-bottom:1px solid var(--border);margin-bottom:4px;
+}
+.branch-rows{display:flex;flex-direction:column;gap:6px;max-height:340px;overflow-y:auto;padding:4px 2px}
+.branch-rows::-webkit-scrollbar{width:4px}
+.branch-rows::-webkit-scrollbar-track{background:var(--surface-3);border-radius:2px}
+.branch-rows::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:2px}
+.brow{display:grid;grid-template-columns:1fr 70px 70px 30px;gap:6px;align-items:center}
+.bi{
+  background:var(--surface-2);border:1px solid var(--border);border-radius:8px;
+  padding:9px 10px;color:var(--text);font-size:12px;outline:none;
+  font-family:inherit;width:100%;
+  box-shadow:var(--inset);
+  transition:border-color 0.2s,box-shadow 0.2s;
+}
+.bi:focus{border-color:var(--y-d);box-shadow:var(--inset),0 0 0 3px rgba(254,207,0,0.15)}
+.bi::placeholder{color:var(--text-3)}
+.bi.pct{color:var(--green);font-weight:700;text-align:center}
+.bi.bal{color:var(--red);font-weight:700;text-align:center}
+.del-btn{background:none;border:none;color:var(--text-3);cursor:pointer;font-size:16px;transition:color .2s;padding:4px}
+.del-btn:hover{color:var(--red)}
+.add-btn{
+  background:var(--surface-2);border:1.5px dashed var(--border-2);border-radius:8px;
+  padding:9px;color:var(--text-2);font-size:11px;font-weight:600;
+  cursor:pointer;transition:all .2s;width:100%;margin-top:8px;font-family:inherit;
+}
+.add-btn:hover{border-color:var(--y-d);color:#7a5e00;background:var(--y-bg)}
+
+/* ── THEME PICKER ───────────────────────────────────── */
+.theme-row{display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.theme-lbl{
+  font-size:9.5px;font-weight:800;letter-spacing:2px;text-transform:uppercase;
+  color:var(--plum);min-width:82px;
+}
+.theme-opts{display:flex;gap:10px;flex-wrap:wrap}
+.theme-card{
+  display:flex;flex-direction:column;align-items:center;gap:7px;
+  cursor:pointer;padding:10px 12px;border-radius:14px;
+  border:2px solid var(--border);background:var(--surface);
+  box-shadow:var(--s1);transition:all .22s;
+}
+.theme-card:hover{border-color:var(--y-d);box-shadow:var(--s2);transform:translateY(-2px)}
+.theme-card.active{
+  border-color:var(--y);background:var(--y-bg);
+  box-shadow:var(--s2),0 0 0 3px rgba(254,207,0,0.18);
+  transform:translateY(-3px);
+}
+.theme-card input{display:none}
+.theme-swatch{
+  width:72px;height:44px;border-radius:10px;
+  border:1px solid rgba(0,0,0,0.09);
+  position:relative;overflow:hidden;
+  box-shadow:var(--s1);
+}
+.theme-swatch::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:28%;
+  background:rgba(254,207,0,0.55);
+}
+.theme-name{font-size:9px;font-weight:700;color:var(--text-2);letter-spacing:1.5px;text-transform:uppercase}
+
+/* ── GENERATE BUTTON ────────────────────────────────── */
+.gen-btn{
+  width:100%;
+  background:linear-gradient(180deg,#ffe566 0%,#FECF00 40%,#d4ab00 100%);
+  color:var(--plum);
+  border:1px solid #b89200;border-radius:var(--r-md);
+  padding:18px 0;font-size:14px;font-weight:900;font-family:inherit;
+  letter-spacing:3.5px;text-transform:uppercase;cursor:pointer;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.50) inset,
+    0 -2px 0 rgba(0,0,0,0.14) inset,
+    0 8px 28px rgba(254,207,0,0.35),
+    0 3px 10px rgba(0,0,0,0.10);
+  transition:all .18s; margin:22px 0;
+}
+.gen-btn:hover{
+  background:linear-gradient(180deg,#ffed80 0%,#ffe040 40%,#e6be00 100%);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.50) inset,
+    0 -2px 0 rgba(0,0,0,0.14) inset,
+    0 14px 40px rgba(254,207,0,0.45),
+    0 4px 14px rgba(0,0,0,0.12);
+  transform:translateY(-2px);
+}
+.gen-btn:active{
+  transform:translateY(1px);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.35) inset,
+    0 -1px 0 rgba(0,0,0,0.10) inset,
+    0 4px 14px rgba(254,207,0,0.28);
+}
+
+/* ── OUTPUT ─────────────────────────────────────────── */
+.output-wrap{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-xl);padding:24px;
+  box-shadow:var(--s4);margin-bottom:20px;
+}
+canvas#out{
+  width:100%;border-radius:12px;display:block;
+  box-shadow:var(--s3);
+}
+.result-actions{display:flex;gap:12px;justify-content:center;padding-top:20px}
+.dl-btn{
+  background:linear-gradient(180deg,#ffe566 0%,#FECF00 40%,#d4ab00 100%);
+  color:var(--plum);border:1px solid #b89200;border-radius:12px;
+  padding:14px 36px;font-size:13px;font-weight:900;font-family:inherit;
+  cursor:pointer;letter-spacing:2px;text-transform:uppercase;transition:all .2s;
+  box-shadow:0 1px 0 rgba(255,255,255,0.5) inset,0 6px 22px rgba(254,207,0,0.32);
+}
+.dl-btn:hover{
+  box-shadow:0 1px 0 rgba(255,255,255,0.5) inset,0 10px 36px rgba(254,207,0,0.46);
+  transform:translateY(-1px);
+}
+.regen-btn{
+  background:var(--surface);border:1.5px solid var(--border-2);
+  color:var(--text-2);border-radius:12px;padding:14px 26px;
+  font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;
+  transition:all .2s;box-shadow:var(--s1);
+}
+.regen-btn:hover{border-color:var(--plum);color:var(--plum);box-shadow:var(--s2)}
+
+/* ── DIVIDER ────────────────────────────────────────── */
+.divider{height:1px;background:linear-gradient(to right,transparent,var(--border),transparent);margin:8px 0 20px}
+
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<!-- ── HEADER ─────────────────────────────────────── -->
+<header class="hdr">
+  <div class="logo">
+    <div class="mark">J</div>
+    <div>
+      <div class="bname">JANAGEN</div>
+      <div class="bsub">AI Visual Studio</div>
+    </div>
+  </div>
+  <div class="hdr-badge">
+    <span class="dot"></span>
+    Auto-reads screenshot &nbsp;·&nbsp; No API Key Required
+  </div>
+</header>
+
+<!-- ── READING OVERLAY ────────────────────────────── -->
+<div class="reading-overlay" id="readingOverlay">
+  <div class="reading-ring"></div>
+  <div class="reading-title">READING YOUR DATA</div>
+  <div class="reading-msg" id="readingMsg">Analysing screenshot with OCR engine…</div>
+  <div class="reading-prog"><div class="reading-fill" id="readingFill"></div></div>
+</div>
+
+<!-- ── MAIN ───────────────────────────────────────── -->
+<main class="main">
+
+  <!-- STEP 1: UPLOAD -->
+  <div class="section-label">Step 1 — Upload Your Data Screenshot</div>
+  <div class="drop" id="drop">
+    <input type="file" id="fileInp" accept="image/*">
+    <div class="drop-icon-wrap">📊</div>
+    <div class="drop-title">Drop your JANAGEN data screenshot here</div>
+    <div class="drop-sub">
+      The app will <strong>automatically read every number</strong> from your image — no manual entry needed.<br>
+      Sales · Compliance · Operations · Any report screenshot
+    </div>
+    <div class="tags">
+      <span class="tag">Auto-extract</span>
+      <span class="tag">Sales</span>
+      <span class="tag">Compliance</span>
+      <span class="tag">PNG · JPG · WEBP</span>
+    </div>
+  </div>
+
+  <!-- ── WORK AREA ───────────────────────────────── -->
+  <div class="hidden" id="workArea">
+
+    <div class="section-label">Step 2 — Review &amp; Edit Extracted Data</div>
+
+    <div class="two">
+      <!-- Preview card -->
+      <div class="card">
+        <div class="ch">
+          <span class="cht">Uploaded Screenshot</span>
+          <span class="ocr-badge ok" id="ocrBadge">✓ Data extracted</span>
+        </div>
+        <div class="cb" style="padding:14px">
+          <img id="prevImg" class="prev-img" src="" alt="Uploaded screenshot">
+        </div>
+      </div>
+
+      <!-- Metrics card -->
+      <div class="card">
+        <div class="ch">
+          <span class="cht">Summary Metrics</span>
+          <span style="font-size:10px;color:var(--text-3);font-weight:600">Edit if needed</span>
+        </div>
+        <div class="cb">
+          <div class="form-grid">
+            <div class="fgroup">
+              <label class="flbl">Report Title</label>
+              <input class="finp" id="fTitle" placeholder="TOGETHER WE ACHIEVE">
+            </div>
+            <div class="fgroup">
+              <label class="flbl">Period</label>
+              <input class="finp" id="fPeriod" placeholder="e.g. April 2026">
+            </div>
+            <div class="fgroup">
+              <label class="flbl">Sales Target (₹)</label>
+              <input class="finp" id="fTarget" placeholder="e.g. 1,13,94,000">
+            </div>
+            <div class="fgroup">
+              <label class="flbl">Sales Achievement (₹)</label>
+              <input class="finp" id="fAchieved" placeholder="e.g. 22,08,628">
+            </div>
+            <div class="fgroup">
+              <label class="flbl">Total Bills</label>
+              <input class="finp" id="fBills" placeholder="e.g. 11,494">
+            </div>
+            <div class="fgroup">
+              <label class="flbl">Avg Bill Value (₹)</label>
+              <input class="finp" id="fAvg" placeholder="e.g. 192">
+            </div>
+            <div class="fgroup">
+              <label class="flbl">Overall Achievement %</label>
+              <input class="finp" id="fOverall" type="number" placeholder="e.g. 72" min="0" max="100">
+            </div>
+            <div class="fgroup">
+              <label class="flbl">Data Type</label>
+              <select class="fsel" id="fType">
+                <option value="SALES">Sales Performance</option>
+                <option value="COMPLIANCE">Huddle Compliance</option>
+                <option value="OPERATIONS">Operations</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Branch performance card -->
+    <div class="card">
+      <div class="ch">
+        <span class="cht">Branch Performance</span>
+        <span style="font-size:10px;color:var(--text-3);font-weight:600">Auto-filled · edit if needed</span>
+      </div>
+      <div class="cb">
+        <div class="btable-head">
+          <span>Branch Name</span>
+          <span style="text-align:center">Ach %</span>
+          <span style="text-align:center">Balance %</span>
+          <span></span>
+        </div>
+        <div class="branch-rows" id="branchRows"></div>
+        <button class="add-btn" onclick="addRow()">+ Add Branch Row</button>
+      </div>
+    </div>
+
+    <!-- Theme + Generate card -->
+    <div class="card">
+      <div class="ch">
+        <span class="cht">Visual Theme</span>
+        <span style="font-size:10px;color:var(--text-3);font-weight:600">Choose your output style</span>
+      </div>
+      <div class="cb" style="background:var(--surface-2)">
+        <div class="theme-row" id="themeOpts">
+          <span class="theme-lbl">Select Theme</span>
+          <div class="theme-opts">
+            <label class="theme-card active" onclick="pickTheme(this,'brand')">
+              <input type="radio" name="thm" value="brand" checked>
+              <div class="theme-swatch" style="background:linear-gradient(135deg,#2e1b43,#251632,#190e29)"></div>
+              <span class="theme-name">Brand Dark</span>
+            </label>
+            <label class="theme-card" onclick="pickTheme(this,'navy')">
+              <input type="radio" name="thm" value="navy">
+              <div class="theme-swatch" style="background:linear-gradient(135deg,#0c1a35,#0f2244,#07101f)"></div>
+              <span class="theme-name">Navy Blue</span>
+            </label>
+            <label class="theme-card" onclick="pickTheme(this,'slate')">
+              <input type="radio" name="thm" value="slate">
+              <div class="theme-swatch" style="background:linear-gradient(135deg,#1c1c2e,#16213e,#0f0f23)"></div>
+              <span class="theme-name">Onyx Slate</span>
+            </label>
+            <label class="theme-card" onclick="pickTheme(this,'emerald')">
+              <input type="radio" name="thm" value="emerald">
+              <div class="theme-swatch" style="background:linear-gradient(135deg,#0d2b1e,#0a2018,#051410)"></div>
+              <span class="theme-name">Forest Dark</span>
+            </label>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <button class="gen-btn" onclick="generate()">⚡ Generate Executive Visual</button>
+      </div>
+    </div>
+
+  </div><!-- /workArea -->
+
+  <!-- ── OUTPUT ─────────────────────────────────── -->
+  <div class="hidden" id="outputArea">
+    <div class="section-label">Your Executive Visual</div>
+    <div class="output-wrap">
+      <canvas id="out"></canvas>
+      <div class="result-actions">
+        <button class="dl-btn" onclick="dlPNG()">⬇ &nbsp;Download HD PNG</button>
+        <button class="regen-btn" onclick="generate()">↺ &nbsp;Regenerate</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ── BRAND COLORS ─────────────────────────────────────
+const C = {
+  plum:'#251632', plumD:'#160d1f', plumL:'#3a2150',
+  y:'#FECF00', white:'#FFFFFF', muted:'#9085a8',
+  green:'#22c55e', amber:'#f59e0b', red:'#ef4444'
+};
+
+// ── THEMES ────────────────────────────────────────────
+const THEMES = {
+  brand: {
+    bg1:'#2e1b43', bg2:'#251632', bg3:'#190e29',
+    hdrO:'rgba(0,0,0,0.65)', hdrO2:'rgba(0,0,0,0.25)',
+    cardBg:'rgba(0,0,0,0.36)',
+    rowEven:'rgba(255,255,255,0.016)', rowOdd:'rgba(0,0,0,0.12)',
+  },
+  navy: {
+    bg1:'#0c1a35', bg2:'#0f2244', bg3:'#07101f',
+    hdrO:'rgba(0,0,30,0.78)', hdrO2:'rgba(0,0,20,0.3)',
+    cardBg:'rgba(0,20,60,0.40)',
+    rowEven:'rgba(255,255,255,0.02)', rowOdd:'rgba(0,0,30,0.15)',
+  },
+  slate: {
+    bg1:'#1c1c2e', bg2:'#16213e', bg3:'#0f0f23',
+    hdrO:'rgba(0,0,0,0.72)', hdrO2:'rgba(0,0,0,0.3)',
+    cardBg:'rgba(255,255,255,0.04)',
+    rowEven:'rgba(255,255,255,0.018)', rowOdd:'rgba(0,0,0,0.14)',
+  },
+  emerald: {
+    bg1:'#0d2b1e', bg2:'#0a2018', bg3:'#051410',
+    hdrO:'rgba(0,10,5,0.76)', hdrO2:'rgba(0,10,5,0.25)',
+    cardBg:'rgba(0,40,20,0.35)',
+    rowEven:'rgba(255,255,255,0.016)', rowOdd:'rgba(0,20,10,0.15)',
+  },
+};
+
+// ── BOOT ─────────────────────────────────────────────
+window.onload = () => setupDrop();
+
+// ── UPLOAD + OCR ──────────────────────────────────────
+function setupDrop() {
+  const zone = document.getElementById('drop');
+  const inp  = document.getElementById('fileInp');
+  inp.addEventListener('change', e => { if (e.target.files[0]) load(e.target.files[0]); });
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault(); zone.classList.remove('over');
+    if (e.dataTransfer.files[0]) load(e.dataTransfer.files[0]);
+  });
+}
+
+function load(file) {
+  if (!file.type.startsWith('image/')) return;
+  const reader = new FileReader();
+  reader.onload = async e => {
+    const dataUrl = e.target.result;
+    document.getElementById('prevImg').src = dataUrl;
+    show('workArea');
+    await runOCR(dataUrl);
+    document.getElementById('workArea').scrollIntoView({behavior:'smooth'});
+  };
+  reader.readAsDataURL(file);
+}
+
+async function runOCR(dataUrl) {
+  showReading('Starting OCR engine…', 5);
+  try {
+    const result = await Tesseract.recognize(dataUrl, 'eng', {
+      logger: m => {
+        if (m.status === 'recognizing text') {
+          const p = Math.round(m.progress * 80) + 10;
+          showReading('Reading your data…', p);
+        }
+      }
+    });
+    showReading('Parsing extracted data…', 90);
+    const parsed = parseOCR(result.data.text);
+    showReading('Filling form…', 98);
+    fillForm(parsed);
+    hideReading();
+  } catch(e) {
+    hideReading();
+    document.getElementById('ocrBadge').className = 'ocr-badge warn';
+    document.getElementById('ocrBadge').textContent = '⚠ Please fill manually';
+    initEmptyRows();
+  }
+}
+
+// ── OCR PARSING ───────────────────────────────────────
+function parseOCR(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  const result = {
+    title: '', period: '', target: '', achieved: '',
+    bills: '', avg: '', overall: '', branches: []
+  };
+
+  const BRANCH_KEYS = [
+    'CHINTAL','DILSUKHNAGAR','KACHIGUDA','KPHB','KUTBIGUDA','KUTBI',
+    'MANIKONDA','MANI','MARREDPALLY','MARRED','MOOSARAMBAGH','MOOSARAM',
+    'NACHARAM','PUNJAGUTTA','PUNJA','SUCHITRA','MOULAALI','NGO'
+  ];
+
+  lines.forEach(line => {
+    const up = line.toUpperCase();
+    if (up.includes('TOGETHER') || up.includes('ACHIEVE') || up.includes('TARGET')) {
+      if (!result.title && up.includes('TOGETHER')) result.title = 'TOGETHER WE ACHIEVE';
+    }
+    const periodMatch = line.match(/(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)[^\n,]*(20\d\d)?/i);
+    if (periodMatch && !result.period) result.period = periodMatch[0].trim();
+    const rangeMatch = line.match(/(\d{1,2}(?:st|nd|rd|th)?\s*(?:to|-)\s*\d{1,2}(?:st|nd|rd|th)?)/i);
+    if (rangeMatch && !result.period) result.period = rangeMatch[0].trim();
+  });
+
+  lines.forEach(line => {
+    const up = line.toUpperCase();
+    const nums = line.match(/[\d,]+(?:\.\d+)?/g) || [];
+    const cleanNums = nums.map(n => parseFloat(n.replace(/,/g,''))).filter(n => !isNaN(n));
+
+    if (up.startsWith('TOTAL') || up === 'TOTAL') {
+      if (cleanNums.length >= 4) {
+        if (!result.target   && cleanNums[0] > 10000) result.target   = fmtNum(cleanNums[0]);
+        if (!result.achieved && cleanNums[1] > 1000)  result.achieved = fmtNum(cleanNums[1]);
+        if (!result.bills    && cleanNums[2] > 100)   result.bills    = fmtNum(cleanNums[2]);
+        if (!result.avg      && cleanNums[3] < 10000) result.avg      = Math.round(cleanNums[3]).toString();
+        const pcts = cleanNums.filter(n => n > 0 && n <= 100);
+        if (pcts.length >= 1 && !result.overall) result.overall = Math.round(pcts[0]).toString();
+      }
+    }
+
+    const branchKey = BRANCH_KEYS.find(k => up.includes(k));
+    if (branchKey && cleanNums.length >= 2) {
+      const smallNums = cleanNums.filter(n => n >= 0 && n <= 100);
+      let achPct = null, balPct = null;
+      if (smallNums.length >= 2) {
+        achPct = Math.round(smallNums[smallNums.length - 2]);
+        balPct = Math.round(smallNums[smallNums.length - 1]);
+      } else if (smallNums.length === 1) {
+        achPct = Math.round(smallNums[0]);
+      }
+      const canonName = canonicalize(up, branchKey);
+      const exists = result.branches.find(b => b.name === canonName);
+      if (!exists && achPct !== null) {
+        result.branches.push({ name: canonName, pct: achPct, bal: balPct });
+      }
+    }
+  });
+
+  if (!result.period) {
+    for (const line of lines) {
+      const m = line.match(/20\d\d/);
+      if (m) { result.period = line.trim().slice(0,40); break; }
+    }
+  }
+
+  return result;
+}
+
+function canonicalize(up, key) {
+  if (up.includes('KACHIGUDA')) {
+    if (up.includes('2') || up.includes('STORE 2')) return 'KACHIGUDA 2';
+    return 'KACHIGUDA 1';
+  }
+  if (up.includes('KUTBI')) return 'KUTBIGUDA';
+  if (up.includes('MARRED')) return 'MARREDPALLY';
+  if (up.includes('MOOSA')) return 'MOOSARAMBAGH';
+  if (up.includes('PUNJA')) return 'PUNJAGUTTA';
+  if (up.includes('MANI')) return 'MANIKONDA';
+  return key;
+}
+
+function fmtNum(n) {
+  return Math.round(n).toLocaleString('en-IN');
+}
+
+// ── FILL FORM ─────────────────────────────────────────
+function fillForm(parsed) {
+  if (parsed.title)   document.getElementById('fTitle').value   = parsed.title;
+  if (parsed.period)  document.getElementById('fPeriod').value  = parsed.period;
+  if (parsed.target)  document.getElementById('fTarget').value  = parsed.target;
+  if (parsed.achieved)document.getElementById('fAchieved').value= parsed.achieved;
+  if (parsed.bills)   document.getElementById('fBills').value   = parsed.bills;
+  if (parsed.avg)     document.getElementById('fAvg').value     = parsed.avg;
+  if (parsed.overall) document.getElementById('fOverall').value = parsed.overall;
+
+  const container = document.getElementById('branchRows');
+  container.innerHTML = '';
+
+  if (parsed.branches.length > 0) {
+    parsed.branches.forEach(b => container.appendChild(makeRow(b.name, b.pct, b.bal)));
+    document.getElementById('ocrBadge').className = 'ocr-badge ok';
+    document.getElementById('ocrBadge').textContent = `✓ ${parsed.branches.length} branches extracted`;
+  } else {
+    initEmptyRows();
+    document.getElementById('ocrBadge').className = 'ocr-badge warn';
+    document.getElementById('ocrBadge').textContent = '⚠ Enter branch data manually';
+  }
+}
+
+function initEmptyRows() {
+  const container = document.getElementById('branchRows');
+  container.innerHTML = '';
+  ['CHINTAL','DILSUKHNAGAR','KACHIGUDA 1','KACHIGUDA 2','KPHB','KUTBIGUDA',
+   'MANIKONDA','MARREDPALLY','MOOSARAMBAGH','NACHARAM','PUNJAGUTTA','SUCHITRA']
+  .forEach(n => container.appendChild(makeRow(n)));
+}
+
+function makeRow(name='', pct='', bal='') {
+  const d = document.createElement('div');
+  d.className = 'brow';
+  d.innerHTML = `
+    <input class="bi" placeholder="Branch name" value="${name}">
+    <input class="bi pct" type="number" placeholder="%" min="0" max="100" value="${pct !== null && pct !== undefined ? pct : ''}">
+    <input class="bi bal" type="number" placeholder="%" min="0" max="100" value="${bal !== null && bal !== undefined ? bal : ''}">
+    <button class="del-btn" onclick="this.parentElement.remove()">×</button>`;
+  return d;
+}
+
+function addRow() { document.getElementById('branchRows').appendChild(makeRow()); }
+
+// ── THEME PICKER ──────────────────────────────────────
+function pickTheme(el, val) {
+  document.querySelectorAll('.theme-card').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  el.querySelector('input').checked = true;
+}
+function getTheme() {
+  const v = (document.querySelector('input[name="thm"]:checked') || {}).value || 'brand';
+  return THEMES[v] || THEMES.brand;
+}
+
+// ── READING OVERLAY ───────────────────────────────────
+function showReading(msg, pct) {
+  document.getElementById('readingOverlay').classList.add('on');
+  document.getElementById('readingMsg').textContent = msg;
+  document.getElementById('readingFill').style.width = pct + '%';
+}
+function hideReading() {
+  document.getElementById('readingOverlay').classList.remove('on');
+}
+
+// ── COLLECT DATA ──────────────────────────────────────
+function getData() {
+  const rows = document.querySelectorAll('.brow');
+  const branches = [];
+  rows.forEach(r => {
+    const inputs = r.querySelectorAll('input');
+    const name = inputs[0].value.trim();
+    const pct  = parseFloat(inputs[1].value);
+    const bal  = parseFloat(inputs[2].value);
+    if (name) branches.push({ name, pct: isNaN(pct)?null:pct, bal: isNaN(bal)?null:bal });
+  });
+  return {
+    title:    v('fTitle')   || 'TOGETHER WE ACHIEVE',
+    period:   v('fPeriod')  || 'April 2026',
+    target:   v('fTarget'),
+    achieved: v('fAchieved'),
+    bills:    v('fBills'),
+    avg:      v('fAvg'),
+    overall:  parseFloat(v('fOverall')) || 0,
+    branches
+  };
+}
+const v = id => document.getElementById(id).value.trim();
+
+// ── GENERATE ─────────────────────────────────────────
+function generate() {
+  const data = getData();
+  drawDashboard(data, getTheme());
+  show('outputArea');
+  document.getElementById('outputArea').scrollIntoView({behavior:'smooth'});
+}
+
+// ── CANVAS ───────────────────────────────────────────
+function drawDashboard(d, t) {
+  t = t || THEMES.brand;
+  const canvas = document.getElementById('out');
+  const W = 1600, H = 900;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  // ── LAYOUT ────────────────────────────────────────────
+  const PAD   = 28;
+  const HDR_H = 92;
+  const KPI_Y = HDR_H;
+  const KPI_H = 90;
+  const TBL_Y = KPI_Y + KPI_H;   // 182 — table right after KPI, no banner
+  const FTR_H = 52;
+  const FTR_Y = H - FTR_H;       // 848
+  const DIVX  = 1068;             // table | right panel
+
+  // Column grid: CN(28→213) CB(227→817) CA(831→923) CL(933→1019) DIVX(1068)
+  const CN = { x: PAD,       w: 185 };   // branch name
+  const CB = { x: PAD + 199, w: 590 };   // bar (227→817)
+  const CA = { x: PAD + 803, w: 92  };   // ACH%  center=877
+  const CL = { x: PAD + 905, w: 86  };   // Bal   center=948
+
+  // ── BACKGROUND ────────────────────────────────────────
+  const bg = ctx.createLinearGradient(0, 0, W, H);
+  bg.addColorStop(0,   t.bg1);
+  bg.addColorStop(0.5, t.bg2);
+  bg.addColorStop(1,   t.bg3);
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+
+  // Atmospheric depth circles
+  ctx.beginPath(); ctx.arc(0, 0, 340, 0, Math.PI*2);
+  ctx.fillStyle = 'rgba(254,207,0,0.030)'; ctx.fill();
+  ctx.beginPath(); ctx.arc(W, H, 310, 0, Math.PI*2);
+  ctx.fillStyle = 'rgba(254,207,0,0.020)'; ctx.fill();
+
+  // Gold radial glow from top-center
+  const topG = ctx.createRadialGradient(W/2, 0, 0, W/2, 0, 400);
+  topG.addColorStop(0, 'rgba(254,207,0,0.11)');
+  topG.addColorStop(1, 'rgba(254,207,0,0)');
+  ctx.fillStyle = topG; ctx.fillRect(0, 0, W, 400);
+
+  // Fine dot grid
+  ctx.fillStyle = 'rgba(255,255,255,0.016)';
+  for (let gx = 40; gx < W; gx += 58)
+    for (let gy = 40; gy < H; gy += 58) {
+      ctx.beginPath(); ctx.arc(gx, gy, 1, 0, Math.PI*2); ctx.fill();
+    }
+
+  // ── HEADER ────────────────────────────────────────────
+  const hg = ctx.createLinearGradient(0, 0, 0, HDR_H);
+  hg.addColorStop(0, t.hdrO); hg.addColorStop(1, t.hdrO2);
+  ctx.fillStyle = hg; ctx.fillRect(0, 0, W, HDR_H);
+
+  const tb = ctx.createLinearGradient(0, 0, W, 0);
+  tb.addColorStop(0, '#b37a00'); tb.addColorStop(0.25, C.y);
+  tb.addColorStop(0.75, C.y);   tb.addColorStop(1, '#b37a00');
+  ctx.fillStyle = tb; ctx.fillRect(0, 0, W, 8);
+
+  ctx.shadowColor = 'rgba(254,207,0,0.58)'; ctx.shadowBlur = 18;
+  rr(ctx, PAD, 16, 60, 60, 14);
+  ctx.fillStyle = C.y; ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = C.plum;
+  ctx.font = 'bold 32px "Segoe UI",Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText('J', PAD + 30, 59);
+
+  ctx.textAlign = 'left'; ctx.fillStyle = C.y;
+  ctx.font = 'bold 22px "Segoe UI",Arial';
+  ctx.fillText('JANAGEN', PAD + 74, 45);
+  ctx.fillStyle = C.muted; ctx.font = '10px "Segoe UI",Arial';
+  ctx.fillText('PHARMACIES · HYDERABAD', PAD + 76, 63);
+
+  ctx.textAlign = 'center'; ctx.fillStyle = C.white;
+  ctx.font = 'bold 40px "Segoe UI",Arial';
+  ctx.shadowColor = 'rgba(254,207,0,0.32)'; ctx.shadowBlur = 22;
+  ctx.fillText((d.title || 'TOGETHER WE ACHIEVE').toUpperCase(), W/2, 46);
+  ctx.shadowBlur = 0;
+
+  const per = (d.period || '').toUpperCase();
+  const pTxt = per ? `TARGET VS ACHIEVEMENT  ·  ${per}` : 'TARGET VS ACHIEVEMENT';
+  ctx.font = '12px "Segoe UI",Arial';
+  const pW = Math.min(ctx.measureText(pTxt).width + 52, 720);
+  rr(ctx, W/2 - pW/2, 56, pW, 28, 14);
+  ctx.fillStyle = 'rgba(254,207,0,0.14)'; ctx.fill();
+  ctx.strokeStyle = 'rgba(254,207,0,0.50)'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.fillStyle = C.y; ctx.fillText(pTxt, W/2, 75);
+
+  ctx.textAlign = 'right'; ctx.fillStyle = C.muted;
+  ctx.font = '10px "Segoe UI",Arial';
+  ctx.fillText(d.type || 'SALES PERFORMANCE', W - PAD, 60);
+
+  // ── KPI STRIP ─────────────────────────────────────────
+  const kpis = [
+    { sym:'T', label:'SALES TARGET',    value: d.target   ? '₹ '+d.target   : '—', clr:'#60a5fa' },
+    { sym:'A', label:'SALES ACHIEVED',  value: d.achieved ? '₹ '+d.achieved : '—', clr: C.y      },
+    { sym:'B', label:'TOTAL BILLS',     value: d.bills    || '—',                   clr:'#fb923c' },
+    { sym:'V', label:'AVG BILL VALUE',  value: d.avg      ? '₹ '+d.avg      : '—', clr:'#a78bfa' },
+  ];
+  const kW = (W - PAD * 5) / 4;
+  kpis.forEach((k, i) => {
+    const kx = PAD + i * (kW + PAD);
+    const ky = KPI_Y + 8;
+    const kh = KPI_H - 14;
+    rr(ctx, kx, ky, kW, kh, 14);
+    ctx.fillStyle = t.cardBg; ctx.fill();
+    ctx.strokeStyle = k.clr + '35'; ctx.lineWidth = 1; ctx.stroke();
+    rr(ctx, kx, ky, kW, 5, 3); ctx.fillStyle = k.clr; ctx.fill();
+    rr(ctx, kx, ky, 5, kh, 3); ctx.fillStyle = k.clr + '55'; ctx.fill();
+    ctx.beginPath(); ctx.arc(kx+38, ky+kh/2, 22, 0, Math.PI*2);
+    ctx.fillStyle = k.clr + '1a'; ctx.fill();
+    ctx.shadowColor = k.clr + '80'; ctx.shadowBlur = 8;
+    ctx.textAlign = 'center'; ctx.fillStyle = k.clr;
+    ctx.font = `bold 15px "Segoe UI",Arial`;
+    ctx.fillText(k.sym, kx+38, ky+kh/2+5);
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(kx+68, ky+12); ctx.lineTo(kx+68, ky+kh-12); ctx.stroke();
+    ctx.textAlign = 'left'; ctx.fillStyle = C.muted;
+    ctx.font = '9px "Segoe UI",Arial';
+    ctx.fillText(k.label, kx+80, ky+kh/2-10);
+    ctx.fillStyle = C.white;
+    const vs = k.value.length > 14 ? 13 : k.value.length > 10 ? 16 : 21;
+    ctx.font = `bold ${vs}px "Segoe UI",Arial`;
+    ctx.fillText(k.value, kx+80, ky+kh/2+14);
+  });
+
+  ctx.strokeStyle = 'rgba(254,207,0,0.1)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, TBL_Y); ctx.lineTo(W, TBL_Y); ctx.stroke();
+
+  // ── BRANCH TABLE ──────────────────────────────────────
+  const validB = d.branches.filter(b => b.pct !== null && b.pct !== undefined);
+  const TH_H  = 38;
+
+  ctx.fillStyle = 'rgba(0,0,0,0.38)'; ctx.fillRect(0, TBL_Y, DIVX, TH_H);
+  ctx.strokeStyle = 'rgba(254,207,0,0.28)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, TBL_Y+TH_H); ctx.lineTo(DIVX, TBL_Y+TH_H); ctx.stroke();
+
+  [
+    { t:'BRANCH NAME',  cx: CN.x+8,       al:'left'   },
+    { t:'PERFORMANCE',  cx: CB.x,         al:'left'   },
+    { t:'ACH%',         cx: CA.x+CA.w/2,  al:'center' },
+    { t:'BALANCE%',     cx: CL.x+CL.w/2,  al:'center' },
+  ].forEach(h => {
+    ctx.textAlign = h.al; ctx.fillStyle = C.y;
+    ctx.font = 'bold 9px "Segoe UI",Arial';
+    ctx.fillText(h.t, h.cx, TBL_Y + 24);
+  });
+
+  const rowsH = FTR_Y - TBL_Y - TH_H;
+  const rowH  = Math.min(54, Math.floor(rowsH / Math.max(validB.length || 1, 1)));
+  const RS    = TBL_Y + TH_H;
+  const BAR_H = 20;
+
+  validB.forEach((b, i) => {
+    const ry  = RS + i * rowH;
+    const mid = ry + rowH / 2;
+    const pct = Math.min(b.pct || 0, 100);
+    const rc  = pct >= 80 ? C.green : pct >= 60 ? C.amber : '#ef4444';
+
+    ctx.fillStyle = i % 2 === 0 ? t.rowEven : t.rowOdd;
+    ctx.fillRect(0, ry, DIVX, rowH);
+    ctx.fillStyle = rc; ctx.fillRect(0, ry+2, 4, rowH-4);
+    ctx.strokeStyle = 'rgba(255,255,255,0.028)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(4, ry+rowH); ctx.lineTo(DIVX, ry+rowH); ctx.stroke();
+
+    ctx.textAlign = 'left'; ctx.fillStyle = C.white;
+    ctx.font = `bold ${b.name.length > 14 ? 11 : b.name.length > 10 ? 12 : 13}px "Segoe UI",Arial`;
+    ctx.fillText(b.name.toUpperCase(), CN.x+8, mid+5);
+
+    const barY = mid - BAR_H/2;
+    rr(ctx, CB.x, barY, CB.w, BAR_H, BAR_H/2);
+    ctx.fillStyle = 'rgba(255,255,255,0.06)'; ctx.fill();
+
+    const fill = CB.w * pct / 100;
+    if (fill > 3) {
+      const gr = ctx.createLinearGradient(CB.x, 0, CB.x+fill, 0);
+      gr.addColorStop(0, rc+'cc');
+      gr.addColorStop(0.7, rc);
+      gr.addColorStop(1, pct >= 80 ? '#4ade80' : pct >= 60 ? C.y : '#f87171');
+      ctx.shadowColor = rc+'aa'; ctx.shadowBlur = 14;
+      rr(ctx, CB.x, barY, fill, BAR_H, BAR_H/2);
+      ctx.fillStyle = gr; ctx.fill();
+      ctx.shadowBlur = 0;
+      if (fill > 56) {
+        ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(0,0,0,0.65)';
+        ctx.font = `bold 11px "Segoe UI",Arial`;
+        ctx.fillText(pct+'%', CB.x+10, mid+4);
+      }
+    }
+
+    const aCX = CA.x + CA.w/2;
+    rr(ctx, aCX-32, mid-14, 64, 28, 14);
+    ctx.fillStyle = rc+'28'; ctx.fill();
+    ctx.strokeStyle = rc+'66'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.textAlign = 'center'; ctx.fillStyle = rc;
+    ctx.font = `bold 14px "Segoe UI",Arial`;
+    ctx.fillText(pct+'%', aCX, mid+5);
+
+    if (b.bal !== null && b.bal !== undefined) {
+      ctx.textAlign = 'center'; ctx.fillStyle = '#f87171';
+      ctx.font = `bold 12px "Segoe UI",Arial`;
+      ctx.fillText(b.bal+'%', CL.x+CL.w/2, mid+5);
+    }
+  });
+
+  const LY = FTR_Y - 26;
+  [{ c:C.green, t:'80%+ ACHIEVED' }, { c:C.amber, t:'60–79%' }, { c:'#ef4444', t:'BELOW 60%' }]
+  .forEach((l, i) => {
+    const lx = PAD + i*180;
+    ctx.beginPath(); ctx.arc(lx+6, LY, 5, 0, Math.PI*2);
+    ctx.fillStyle = l.c; ctx.fill();
+    ctx.textAlign = 'left'; ctx.fillStyle = C.muted;
+    ctx.font = '10px "Segoe UI",Arial';
+    ctx.fillText(l.t, lx+16, LY+4);
+  });
+
+  ctx.strokeStyle = 'rgba(254,207,0,0.12)'; ctx.lineWidth = 1;
+  ctx.setLineDash([5, 5]);
+  ctx.beginPath(); ctx.moveTo(DIVX+14, TBL_Y+16); ctx.lineTo(DIVX+14, FTR_Y-16); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // ── RIGHT PANEL ───────────────────────────────────────
+  const oa  = d.overall || 0;
+  const TX  = DIVX + 30;
+  const TW  = W - TX - PAD;
+  const GCX = TX + TW/2;
+  const GCY = TBL_Y + 172;
+  const GR  = 112;
+  const achClr = oa >= 80 ? C.green : oa >= 60 ? C.amber : '#ef4444';
+
+  ctx.textAlign = 'center'; ctx.fillStyle = C.y;
+  ctx.font = 'bold 10px "Segoe UI",Arial';
+  ctx.fillText('★  OVERALL ACHIEVEMENT', GCX, TBL_Y + 20);
+
+  ctx.beginPath(); ctx.arc(GCX, GCY, GR+22, 0, Math.PI*2);
+  ctx.strokeStyle = 'rgba(254,207,0,0.06)'; ctx.lineWidth = 1; ctx.stroke();
+
+  for (let deg = 0; deg < 360; deg += 30) {
+    const rad = (deg - 90) * Math.PI / 180;
+    ctx.strokeStyle = 'rgba(254,207,0,0.22)'; ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(GCX + (GR+8)*Math.cos(rad),  GCY + (GR+8)*Math.sin(rad));
+    ctx.lineTo(GCX + (GR+17)*Math.cos(rad), GCY + (GR+17)*Math.sin(rad));
+    ctx.stroke();
+  }
+
+  ctx.beginPath();
+  ctx.arc(GCX, GCY, GR, 0, Math.PI*2);
+  ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+  ctx.lineWidth = 18; ctx.stroke();
+
+  const arcEnd = -Math.PI/2 + (Math.PI * 2 * oa / 100);
+  ctx.beginPath();
+  ctx.arc(GCX, GCY, GR, -Math.PI/2, arcEnd);
+  ctx.strokeStyle = achClr;
+  ctx.lineWidth = 18; ctx.lineCap = 'round';
+  ctx.shadowColor = achClr; ctx.shadowBlur = 26;
+  ctx.stroke();
+  ctx.shadowBlur = 0; ctx.lineCap = 'butt';
+
+  const iG = ctx.createRadialGradient(GCX, GCY, 0, GCX, GCY, GR-12);
+  iG.addColorStop(0, achClr+'25'); iG.addColorStop(1, achClr+'00');
+  ctx.beginPath(); ctx.arc(GCX, GCY, GR-10, 0, Math.PI*2);
+  ctx.fillStyle = iG; ctx.fill();
+
+  ctx.textAlign = 'center';
+  ctx.shadowColor = achClr+'88'; ctx.shadowBlur = 22;
+  ctx.fillStyle = achClr;
+  ctx.font = `bold 68px "Segoe UI",Arial`;
+  ctx.fillText(oa+'%', GCX, GCY+24);
+  ctx.shadowBlur = 0;
+
+  ctx.fillStyle = achClr; ctx.font = 'bold 11px "Segoe UI",Arial';
+  const achSt = oa >= 80 ? 'EXCELLENT' : oa >= 60 ? 'ON TRACK' : 'NEEDS ATTENTION';
+  ctx.fillText(achSt, GCX, GCY+50);
+
+  const T3Y = GCY + GR + 38;
+  ctx.textAlign = 'center'; ctx.fillStyle = C.y;
+  ctx.font = 'bold 10px "Segoe UI",Arial';
+  ctx.fillText('★  TOP 3 PERFORMERS', GCX, T3Y+6);
+
+  const sorted = [...validB].sort((a, b2) => b2.pct - a.pct).slice(0, 3);
+  const RANKS = [
+    { n:'1', bg:'rgba(254,207,0,0.09)',   brd:'rgba(254,207,0,0.55)',    nc:C.y,       vc:C.y       },
+    { n:'2', bg:'rgba(192,192,192,0.08)', brd:'rgba(192,192,192,0.38)',  nc:'#C0C0C0', vc:'#e2e8f0' },
+    { n:'3', bg:'rgba(205,127,50,0.08)',  brd:'rgba(205,127,50,0.38)',   nc:'#CD7F32', vc:'#fb923c' },
+  ];
+  const t3Av = FTR_Y - T3Y - 32;
+  const cH   = Math.min(108, Math.floor(t3Av / 3) - 8);
+
+  sorted.forEach((b, i) => {
+    const R  = RANKS[i];
+    const cy = T3Y + 20 + i*(cH+8);
+    rr(ctx, TX, cy, TW, cH, 16);
+    ctx.fillStyle = R.bg; ctx.fill();
+    ctx.strokeStyle = R.brd; ctx.lineWidth = i===0?2:1; ctx.stroke();
+
+    if (i === 0) {
+      const sh = ctx.createLinearGradient(TX, cy, TX+TW, cy+cH);
+      sh.addColorStop(0,'rgba(254,207,0,0.04)');
+      sh.addColorStop(0.5,'rgba(254,207,0,0.12)');
+      sh.addColorStop(1,'rgba(254,207,0,0.04)');
+      rr(ctx, TX, cy, TW, cH, 16); ctx.fillStyle=sh; ctx.fill();
+    }
+
+    const bCX=TX+38, bCY=cy+cH/2;
+    ctx.beginPath(); ctx.arc(bCX, bCY, 24, 0, Math.PI*2);
+    ctx.fillStyle=R.nc+'22'; ctx.fill();
+    ctx.strokeStyle=R.brd; ctx.lineWidth=2; ctx.stroke();
+    ctx.shadowColor=R.nc+'88'; ctx.shadowBlur=8;
+    ctx.textAlign='center'; ctx.fillStyle=R.nc;
+    ctx.font=`bold 22px "Segoe UI",Arial`;
+    ctx.fillText(R.n, bCX, bCY+8);
+    ctx.shadowBlur=0;
+
+    ctx.textAlign='left'; ctx.fillStyle=R.vc;
+    const nL=b.name.length;
+    ctx.font=`bold ${nL>14?10:nL>10?12:14}px "Segoe UI",Arial`;
+    ctx.fillText(b.name.toUpperCase(), TX+72, cy+cH/2-10);
+    ctx.shadowColor=R.nc+'66'; ctx.shadowBlur=6;
+    ctx.font=`bold 34px "Segoe UI",Arial`;
+    ctx.fillText(b.pct+'%', TX+72, cy+cH/2+24);
+    ctx.shadowBlur=0;
+
+    if (i===0) {
+      ctx.textAlign='right'; ctx.fillStyle=C.y;
+      ctx.font='15px serif'; ctx.fillText('★', TX+TW-12, cy+18);
+    }
+  });
+
+  // ── FOOTER ────────────────────────────────────────────
+  ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(0, FTR_Y, W, FTR_H);
+  ctx.fillStyle=C.y; ctx.fillRect(0, FTR_Y, W, 3);
+  ctx.textAlign='center'; ctx.fillStyle=C.white;
+  ctx.font='bold 15px "Segoe UI",Arial';
+  ctx.fillText("THANK YOU TEAM!  Let's keep the momentum going — greater heights await!", W/2, FTR_Y+32);
+  ctx.textAlign='right'; ctx.fillStyle=C.muted;
+  ctx.font='9px "Segoe UI",Arial';
+  ctx.fillText('Generated by JANAGEN AI Studio', W-PAD, FTR_Y+FTR_H-10);
+}
+
+// ── ROUND RECT ────────────────────────────────────────
+function rr(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath();
+}
+
+// ── DOWNLOAD ──────────────────────────────────────────
+function dlPNG() {
+  const a=document.createElement('a');
+  a.download=`JANAGEN-Visual-${Date.now()}.png`;
+  a.href=document.getElementById('out').toDataURL('image/png'); a.click();
+}
+
+function show(id){document.getElementById(id).classList.remove('hidden')}
+function hide(id){document.getElementById(id).classList.add('hidden')}
+</script>
+</body>
+</html>
